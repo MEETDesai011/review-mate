@@ -1,0 +1,53 @@
+name: 'ReviewMate AI Code Review'
+description: 'AI-powered code review with persona-based analysis, auto-fix suggestions, and health scoring'
+author: 'ReviewMate'
+
+branding:
+  icon: 'code'
+  color: 'purple'
+
+inputs:
+  gemini-api-key:
+    description: 'Google Gemini API key for AI-powered code review'
+    required: true
+  reviewmate-api-key:
+    description: 'ReviewMate backend API key for storing review data'
+    required: true
+  reviewmate-api-url:
+    description: 'ReviewMate backend API base URL'
+    required: false
+    default: 'https://reviewmate-backend.up.railway.app'
+  max-files:
+    description: 'Maximum number of files to review in a single PR'
+    required: false
+    default: '20'
+  severity-threshold:
+    description: 'Minimum severity level to report (CRITICAL, WARNING, INFO)'
+    required: false
+    default: 'WARNING'
+  reviewer-persona:
+    description: 'Reviewer persona (SENIOR_ENGINEER, SECURITY_ENGINEER, PERFORMANCE_ENGINEER, STARTUP_CTO)'
+    required: false
+    default: 'SENIOR_ENGINEER'
+  slack-webhook-url:
+    description: 'Slack incoming webhook URL for notifications'
+    required: false
+  discord-webhook-url:
+    description: 'Discord webhook URL for notifications'
+    required: false
+  generate-release-notes:
+    description: 'Whether to generate release notes for merged PRs'
+    required: false
+    default: 'true'
+
+outputs:
+  review-score:
+    description: 'The overall code health score (0-100)'
+  score-delta:
+    description: 'Change in score compared to previous review'
+  critical-count:
+    description: 'Number of critical issues found'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

@@ -1,0 +1,24 @@
+{
+  "name": "reviewmate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered GitHub PR review platform by Meet Desai",
+  "author": "Meet Desai <MEETDesai011>",
+  "license": "MIT",
+  "workspaces": [
+    "action",
+    "backend",
+    "dashboard",
+    "github-app"
+  ],
+  "scripts": {
+    "action:build": "npm run build --workspace=action",
+    "backend:dev": "npm run dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend",
+    "dashboard:dev": "npm run dev --workspace=dashboard",
+    "dashboard:build": "npm run build --workspace=dashboard"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

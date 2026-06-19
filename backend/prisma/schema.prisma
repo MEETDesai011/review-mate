@@ -1,0 +1,168 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum Category {
+  SECURITY
+  PERFORMANCE
+  STYLE
+  BUG
+  TESTING
+}
+
+enum Persona {
+  SENIOR_ENGINEER
+  SECURITY_ENGINEER
+  PERFORMANCE_ENGINEER
+  STARTUP_CTO
+}
+
+enum AutoFixStatus {
+  PENDING
+  DRAFT_OPENED
+  REJECTED
+  FAILED
+}
+
+model Installation {
+  id           String       @id @default(uuid())
+  githubId     BigInt       @unique
+  accountLogin String
+  suspendedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  repositories Repository[]
+}
+
+model Repository {
+  id                String             @id @default(uuid())
+  githubId          BigInt             @unique
+  owner             String
+  name              String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  installationId    String?
+  installation      Installation?      @relation(fields: [installationId], references: [id], onDelete: SetNull)
+  reviews           Review[]
+  healthScores      HealthScore[]
+  releaseNotes      ReleaseNote[]
+  techDebtSnapshots TechDebtSnapshot[]
+
+  @@index([owner, name])
+}
+
+model Review {
+  id             String          @id @default(uuid())
+  prNumber       Int
+  title          String
+  author         String
+  score          Float
+  previousScore  Float?
+  scoreDelta     Float?
+  persona        Persona
+  summary        String?         @db.Text
+  positives      String[]        @default([])
+  healthImpact   String          @default("NEUTRAL")
+  testCoverage   String          @default("MISSING")
+  createdAt      DateTime        @default(now())
+  repositoryId   String
+  repository     Repository      @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  issues         Issue[]
+  riskAssessment RiskAssessment?
+  autoFixPR      AutoFixPR?
+
+  @@unique([repositoryId, prNumber])
+  @@index([author])
+  @@index([createdAt])
+}
+
+model Issue {
+  id          String   @id @default(uuid())
+  filePath    String
+  lineNumber  Int
+  severity    Severity
+  category    Category
+  description String   @db.Text
+  suggestion  String?  @db.Text
+  fixSnippet  String?  @db.Text
+  fixLanguage String?
+  reviewId    String
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([category])
+  @@index([severity])
+}
+
+model HealthScore {
+  id           String     @id @default(uuid())
+  date         DateTime   @default(now())
+  score        Float
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, date])
+}
+
+model ReleaseNote {
+  id           String     @id @default(uuid())
+  prNumber     Int
+  title        String
+  author       String
+  content      String     @db.Text
+  mergedAt     DateTime   @default(now())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, prNumber])
+  @@index([mergedAt])
+}
+
+model RiskAssessment {
+  id                String   @id @default(uuid())
+  touchesAuth       Boolean
+  touchesPayments   Boolean
+  touchesMigrations Boolean
+  filesChanged      Int
+  linesChanged      Int
+  hasNoNewTests     Boolean
+  score             Float
+  level             String
+  reviewId          String   @unique
+  review            Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model TechDebtSnapshot {
+  id                  String     @id @default(uuid())
+  date                DateTime   @default(now())
+  debtScore           Float
+  missingTestsPct     Float
+  largeFunctionsCount Int
+  duplicateLogicCount Int
+  repositoryId        String
+  repository          Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, date])
+}
+
+model AutoFixPR {
+  id         String        @id @default(uuid())
+  branchName String
+  prNumber   Int?
+  status     AutoFixStatus
+  error      String?       @db.Text
+  createdAt  DateTime      @default(now())
+  reviewId   String        @unique
+  review     Review        @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}

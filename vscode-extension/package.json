@@ -1,0 +1,47 @@
+{
+  "name": "reviewmate",
+  "displayName": "ReviewMate",
+  "description": "AI-powered code review with ReviewMate - inline diagnostics, fix suggestions, and review insights",
+  "version": "1.0.0",
+  "publisher": "MEETDesai011",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "reviewmate.reviewFile", "title": "ReviewMate: Review Current File" },
+      { "command": "reviewmate.reviewSelection", "title": "ReviewMate: Review Selection" },
+      { "command": "reviewmate.generateImprovements", "title": "ReviewMate: Generate Improvements" }
+    ],
+    "configuration": {
+      "title": "ReviewMate",
+      "properties": {
+        "reviewmate.apiUrl": {
+          "type": "string",
+          "default": "https://reviewmate-backend.up.railway.app",
+          "description": "ReviewMate API URL"
+        },
+        "reviewmate.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "ReviewMate API Key"
+        },
+        "reviewmate.persona": {
+          "type": "string",
+          "enum": ["SENIOR_ENGINEER", "SECURITY_ENGINEER", "PERFORMANCE_ENGINEER", "STARTUP_CTO"],
+          "default": "SENIOR_ENGINEER",
+          "description": "Review persona"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node build.js",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.0"
+  }
+}
