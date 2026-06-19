@@ -18,7 +18,7 @@ router.post('/analyze', authenticate, async (req, res, next) => {
       owner,
       repoName,
       githubId,
-      installationId: null, // Actions don't have installationId
+      installationId: req.installationId || null,
       prNumber,
       title,
       author,
@@ -55,16 +55,27 @@ router.post('/', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Missing required fields: owner, repoName, githubId, prNumber, title, author, score, persona' });
     }
 
+    // Verify repository ownership / prevent IDOR if repository exists
+    const existingRepo = await prisma.repository.findUnique({
+      where: { githubId: BigInt(githubId) }
+    });
+
+    if (existingRepo && !req.isGlobalAdmin && existingRepo.installationId && existingRepo.installationId !== req.installationId) {
+      return res.status(403).json({ error: 'Unauthorized: Repository belongs to a different installation' });
+    }
+
     const repository = await prisma.repository.upsert({
       where: { githubId: BigInt(githubId) },
       create: {
         githubId: BigInt(githubId),
         owner,
         name: repoName,
+        installationId: req.installationId || null,
       },
       update: {
         owner,
         name: repoName,
+        ...(req.installationId ? { installationId: req.installationId } : {}),
       },
     });
 
@@ -140,16 +151,19 @@ router.post('/', authenticate, async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const review = await prisma.review.findUnique({
-      where: { id: req.params.id },
+    const review = await prisma.review.findFirst({
+      where: {
+        id: req.params.id,
+        ...(req.isGlobalAdmin ? {} : { repository: { installationId: req.installationId } })
+      },
       include: {
         issues: true,
         riskAssessment: true,
         autoFixPR: true,
         repository: {
-          select: { owner: true, name: true, id: true },
+          select: { owner: true, name: true, id: true, installationId: true },
         },
       },
     });

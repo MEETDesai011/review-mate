@@ -1,11 +1,14 @@
 const { Router } = require('express');
 const prisma = require('../services/prisma');
+const { authenticate } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
+    const where = req.isGlobalAdmin ? {} : { installationId: req.installationId };
     const repos = await prisma.repository.findMany({
+      where,
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: {
@@ -41,10 +44,14 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const repo = await prisma.repository.findUnique({
-      where: { id: req.params.id },
+    const where = req.isGlobalAdmin
+      ? { id: req.params.id }
+      : { id: req.params.id, installationId: req.installationId };
+
+    const repo = await prisma.repository.findFirst({
+      where,
       include: {
         reviews: {
           orderBy: { createdAt: 'desc' },

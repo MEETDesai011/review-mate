@@ -37,6 +37,7 @@ enum AutoFixStatus {
 
 model Installation {
   id           String       @id @default(uuid())
+  apiKey       String       @unique @default(uuid())
   githubId     BigInt       @unique
   accountLogin String
   suspendedAt  DateTime?

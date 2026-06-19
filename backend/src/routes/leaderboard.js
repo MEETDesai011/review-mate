@@ -1,10 +1,11 @@
 const { Router } = require('express');
 const prisma = require('../services/prisma');
 const { getLeaderboard } = require('../services/leaderboard');
+const { authenticate } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const { repoId, timeRange = '30d' } = req.query;
 
@@ -15,7 +16,12 @@ router.get('/', async (req, res, next) => {
     const validRanges = ['7d', '30d', 'all'];
     const range = validRanges.includes(timeRange) ? timeRange : '30d';
 
-    const repo = await prisma.repository.findUnique({ where: { id: repoId } });
+    const repo = await prisma.repository.findFirst({
+      where: {
+        id: repoId,
+        ...(req.isGlobalAdmin ? {} : { installationId: req.installationId }),
+      },
+    });
     if (!repo) {
       return res.status(404).json({ error: 'Repository not found' });
     }

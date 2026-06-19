@@ -142,7 +142,12 @@ async function runGeminiReview(files, persona, prTitle, prBody) {
     const response = result.response;
     const text = response.text();
 
-    const parsed = JSON.parse(text);
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    }
+
+    const parsed = JSON.parse(cleanText);
 
     if (!validateResult(parsed)) {
       console.error('[ReviewMate] Gemini response failed validation, using fallback');

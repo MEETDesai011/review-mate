@@ -4,11 +4,16 @@ const { authenticate } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/:repoId', async (req, res, next) => {
+router.get('/:repoId', authenticate, async (req, res, next) => {
   try {
     const { repoId } = req.params;
 
-    const repo = await prisma.repository.findUnique({ where: { id: repoId } });
+    const repo = await prisma.repository.findFirst({
+      where: {
+        id: repoId,
+        ...(req.isGlobalAdmin ? {} : { installationId: req.installationId }),
+      },
+    });
     if (!repo) {
       return res.status(404).json({ error: 'Repository not found' });
     }
@@ -34,16 +39,27 @@ router.post('/', authenticate, async (req, res, next) => {
       });
     }
 
+    // Verify repository ownership / prevent IDOR if repository exists
+    const existingRepo = await prisma.repository.findUnique({
+      where: { githubId: BigInt(githubId) }
+    });
+
+    if (existingRepo && !req.isGlobalAdmin && existingRepo.installationId && existingRepo.installationId !== req.installationId) {
+      return res.status(403).json({ error: 'Unauthorized: Repository belongs to a different installation' });
+    }
+
     const repository = await prisma.repository.upsert({
       where: { githubId: BigInt(githubId) },
       create: {
         githubId: BigInt(githubId),
         owner,
         name: repoName,
+        installationId: req.installationId || null,
       },
       update: {
         owner,
         name: repoName,
+        ...(req.installationId ? { installationId: req.installationId } : {}),
       },
     });
 

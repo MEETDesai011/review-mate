@@ -102,7 +102,7 @@ async function run() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${reviewmateApiKey}`
+          'X-ReviewMate-API-Key': reviewmateApiKey
         },
         body: JSON.stringify(analyzePayload)
       });

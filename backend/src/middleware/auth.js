@@ -1,25 +1,72 @@
-function authenticate(req, res, next) {
+const prisma = require('../services/prisma');
+
+async function authenticate(req, res, next) {
   const apiKey = req.headers['x-reviewmate-api-key'];
-  const expected = process.env.REVIEWMATE_API_KEY;
-
-  if (!expected) {
-    return res.status(500).json({ error: 'Server API key not configured' });
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Missing API key' });
   }
 
-  if (!apiKey || apiKey !== expected) {
-    return res.status(401).json({ error: 'Invalid or missing API key' });
+  // Check global admin/dev key fallback
+  const globalKey = process.env.REVIEWMATE_API_KEY;
+  if (globalKey && apiKey === globalKey) {
+    req.authenticated = true;
+    req.isGlobalAdmin = true;
+    return next();
   }
 
-  req.authenticated = true;
-  next();
+  try {
+    const installation = await prisma.installation.findUnique({
+      where: { apiKey }
+    });
+
+    if (!installation) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
+    if (installation.suspendedAt) {
+      return res.status(403).json({ error: 'Installation is suspended' });
+    }
+
+    req.authenticated = true;
+    req.installationId = installation.id;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
-function optionalAuth(req, res, next) {
+async function optionalAuth(req, res, next) {
   const apiKey = req.headers['x-reviewmate-api-key'];
-  const expected = process.env.REVIEWMATE_API_KEY;
+  if (!apiKey) {
+    req.authenticated = false;
+    return next();
+  }
 
-  req.authenticated = !!(expected && apiKey && apiKey === expected);
-  next();
+  const globalKey = process.env.REVIEWMATE_API_KEY;
+  if (globalKey && apiKey === globalKey) {
+    req.authenticated = true;
+    req.isGlobalAdmin = true;
+    return next();
+  }
+
+  try {
+    const installation = await prisma.installation.findUnique({
+      where: { apiKey }
+    });
+
+    if (installation && !installation.suspendedAt) {
+      req.authenticated = true;
+      req.installationId = installation.id;
+    } else {
+      req.authenticated = false;
+    }
+    next();
+  } catch (error) {
+    // If DB check fails, fail optional auth silently but log it
+    req.authenticated = false;
+    next();
+  }
 }
 
 module.exports = { authenticate, optionalAuth };

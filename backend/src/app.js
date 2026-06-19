@@ -2,6 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+
+// Safeguard Express from crashing when serializing BigInt fields from Prisma
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
 const errorHandler = require('./middleware/errorHandler');
 
 const reviewsRouter = require('./routes/reviews');

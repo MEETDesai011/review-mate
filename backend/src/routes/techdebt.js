@@ -1,11 +1,23 @@
 const { Router } = require('express');
 const { getTechDebtHistory, snapshotTechDebt } = require('../services/techDebt');
+const prisma = require('../services/prisma');
+const { authenticate } = require('../middleware/auth');
 
 const router = Router();
 
 // Endpoint for Dashboard
-router.get('/:repoId', async (req, res, next) => {
+router.get('/:repoId', authenticate, async (req, res, next) => {
   try {
+    const repo = await prisma.repository.findFirst({
+      where: {
+        id: req.params.repoId,
+        ...(req.isGlobalAdmin ? {} : { installationId: req.installationId }),
+      },
+    });
+    if (!repo) {
+      return res.status(404).json({ error: 'Repository not found' });
+    }
+
     const history = await getTechDebtHistory(req.params.repoId);
     res.json({ history });
   } catch (err) {

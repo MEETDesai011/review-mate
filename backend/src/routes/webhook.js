@@ -142,23 +142,73 @@ router.post('/github', verifySignature, async (req, res, next) => {
 
       // Handle Review
       if (action === 'opened' || action === 'synchronize') {
-        // Dual-review guard: check if review was just created
-        const recentReview = await prisma.review.findFirst({
-          where: {
-            repository: { githubId },
-            prNumber,
-            createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) }
-          }
-        });
-
-        if (recentReview) {
-          return res.status(200).json({ message: 'Skipped duplicate review request' });
-        }
-
         let installationIdDb = null;
         if (installation) {
           const instDb = await prisma.installation.findUnique({ where: { githubId: BigInt(installation.id) } });
           if (instDb) installationIdDb = instDb.id;
+        }
+
+        // Get or create repository securely
+        let repository = await prisma.repository.findUnique({
+          where: { githubId }
+        });
+        if (!repository) {
+          repository = await prisma.repository.upsert({
+            where: { githubId },
+            create: { githubId, owner, name: repoName, installationId: installationIdDb },
+            update: { installationId: installationIdDb }
+          });
+        } else if (installationIdDb && repository.installationId !== installationIdDb) {
+          repository = await prisma.repository.update({
+            where: { id: repository.id },
+            data: { installationId: installationIdDb }
+          });
+        }
+
+        const now = new Date();
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+        let isDuplicate = false;
+
+        // Perform a transaction to safely check and lock the review record
+        await prisma.$transaction(async (tx) => {
+          const existing = await tx.review.findUnique({
+            where: {
+              repositoryId_prNumber: {
+                repositoryId: repository.id,
+                prNumber
+              }
+            }
+          });
+
+          if (existing) {
+            if (existing.createdAt >= fiveMinutesAgo) {
+              isDuplicate = true;
+            } else {
+              // Update createdAt to lock it for concurrent requests
+              await tx.review.update({
+                where: { id: existing.id },
+                data: { createdAt: now }
+              });
+            }
+          } else {
+            // Create a temporary review placeholder to lock it
+            await tx.review.create({
+              data: {
+                repositoryId: repository.id,
+                prNumber,
+                title: prTitle,
+                author,
+                score: 0,
+                persona: 'SENIOR_ENGINEER',
+                summary: 'Processing review...',
+                createdAt: now
+              }
+            });
+          }
+        });
+
+        if (isDuplicate) {
+          return res.status(200).json({ message: 'Skipped duplicate review request' });
         }
 
         const octokit = await getOctokitForInstallation(installation?.id);

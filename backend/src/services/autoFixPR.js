@@ -46,6 +46,11 @@ async function getOctokitForInstallation(installationId) {
 }
 
 async function createAutoFixPR(reviewId) {
+  if (process.env.DISABLE_AUTOFIX_PRS === 'true') {
+    console.log('[ReviewMate] Auto-fix PR generation is disabled via DISABLE_AUTOFIX_PRS=true');
+    return null;
+  }
+
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
     include: {
