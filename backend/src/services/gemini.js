@@ -12,7 +12,7 @@ function getGenAI() {
 async function generateReleaseNotes(prTitle, prBody, filesChanged) {
   try {
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = ai.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `You are a technical writer generating user-facing release notes for a merged pull request.
 
@@ -59,7 +59,7 @@ Return ONLY valid JSON, no markdown fences, no explanation.`;
 async function reviewSnippet(code, language, persona, filePath) {
   try {
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = ai.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const personaDescriptions = {
       SENIOR_ENGINEER: 'a senior software engineer focused on code quality, readability, and maintainability',

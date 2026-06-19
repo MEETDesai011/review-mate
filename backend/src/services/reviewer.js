@@ -127,7 +127,7 @@ async function runGeminiReview(files, persona, prTitle, prBody) {
   try {
     const ai = getGenAI();
     const model = ai.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       generationConfig: {
         temperature: 0.3,
         responseMimeType: 'application/json',
