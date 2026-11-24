@@ -1,2 +1,6 @@
 // ReviewMate PR test
-console.log("ReviewMate Test");
+function authenticateUser(username, password) {
+  // SQL Injection vulnerability test
+  const query = "SELECT * FROM users WHERE user = '" + username + "' AND pass = '" + password + "'";
+  return db.query(query);
+}
